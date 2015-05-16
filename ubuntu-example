@@ -1,0 +1,62 @@
+sudo apt-get update
+sudo apt-get install gcc
+wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_7.0-28_amd64.deb
+sudo dpkg -i cuda-repo-ubuntu1404_7.0-28_amd64.deb
+sudo apt-get update
+sudo apt-get install cuda
+sudo nano /etc/environment
+
+# export PATH=/usr/local/cuda-7.0/bin:$PATH
+# export LD_LIBRARY_PATH=/usr/local/cuda-7.0/lib64:$LD_LIBRARY_PATH
+
+sudo nano /etc/modprobe.d/blacklist-nouveau.conf
+
+# blacklist nouveau
+# blacklist lbm-nouveau
+# options nouveau modeset=0
+# alias nouveau off
+# alias lbm-nouveau off
+
+echo options nouveau modeset=0 | sudo tee -a /etc/modprobe.d/nouveau-kms.conf
+sudo update-initramfs -u
+sudo reboot
+sudo apt-get install linux-source  linux-image-virtual linux-image-extra-virtual
+sudo reboot
+cd /usr/local/cuda/samples/1_Utilities/deviceQuery
+sudo make
+./deviceQuery
+
+
+##############################################
+
+
+
+sudo apt-get update
+sudo apt-get install gcc linux-source  linux-image-virtual linux-image-extra-virtual
+wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_7.0-28_amd64.deb
+sudo dpkg -i cuda-repo-ubuntu1404_7.0-28_amd64.deb
+sudo apt-get update
+sudo apt-get install cuda
+sudo nano /etc/environment
+
+# export PATH=/usr/local/cuda-7.0/bin:$PATH
+# export LD_LIBRARY_PATH=/usr/local/cuda-7.0/lib64:$LD_LIBRARY_PATH
+
+sudo nano /etc/modprobe.d/blacklist-nouveau.conf
+
+# blacklist nouveau
+# blacklist lbm-nouveau
+# options nouveau modeset=0
+# alias nouveau off
+# alias lbm-nouveau off
+
+echo options nouveau modeset=0 | sudo tee -a /etc/modprobe.d/nouveau-kms.conf
+sudo update-initramfs -u
+
+sudo reboot
+
+cd /usr/local/cuda/samples/1_Utilities/deviceQuery
+sudo make
+./deviceQuery
+
+
