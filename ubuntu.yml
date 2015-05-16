@@ -1,0 +1,47 @@
+---
+- hosts: target-host
+  sudo: yes
+  gather_facts: false
+  tasks:
+    - apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+      with_items:
+        - gcc
+        - linux-source
+        - linux-image-virtual
+        - linux-image-extra-virtual
+
+    - get_url:
+        url: http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_7.0-28_amd64.deb
+        dest: ~/cuda-installer.deb
+
+    - apt:
+        deb: ~/cuda-installer.deb
+
+    - apt:
+        name: cuda
+        state: present
+        update_cache: true
+
+    - file:
+        path: ~/cuda-installer.deb
+        state: absent
+
+    - copy:
+        src: blacklist-nouveau.conf
+        dest: /etc/modprobe.d/blacklist-nouveau.conf
+
+    - lineinfile:
+        create: true
+        state: present
+        dest: /etc/modprobe.d/nouveau-kms.conf
+        line: options nouveau modeset=0
+
+    - command: update-initramfs -u
+
+
+
+
+
