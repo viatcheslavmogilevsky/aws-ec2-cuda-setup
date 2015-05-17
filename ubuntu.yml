@@ -1,7 +1,85 @@
 ---
-- hosts: target-host
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - set_fact:
+        aws_region: "{{ lookup('env','AWS_REGION') }}"
+
+    - ec2_ami_search:
+        distro: ubuntu
+        release: trusty
+        region: "{{ aws_region }}"
+        virt: hvm
+      register: ami_find
+
+    - ec2_key:
+        name: ubuntu_key
+        wait: yes
+      register: key_data
+
+    - copy:
+        content: "{{ key_data.key.private_key }}"
+        dest: secrets/ubuntu-private-key-file
+        mode: 0600
+      when: key_data.key.private_key|default(0)
+
+    - ec2_vpc:
+        state: present
+        cidr_block: 10.0.0.0/16
+        resource_tags:
+          Environment: Development
+          Name: cuda-host
+        wait: yes
+        internet_gateway: yes
+        subnets:
+          - cidr: 10.0.0.0/24
+            az: "{{ aws_region }}a"
+        route_tables:
+          - subnets:
+              - 10.0.0.0/24
+            routes:
+              - dest: 0.0.0.0/0
+                gw: igw
+      register: vpc_result
+    - set_fact:
+        vpc_id: "{{ vpc_result.vpc_id }}"
+        vpc_subnet_id: "{{ vpc_result.subnets[0]['id'] }}"
+
+    - ec2_group:
+        name: cuda-host
+        description: security group for ssh access to host for installation
+        vpc_id: "{{ vpc_id }}"
+        rules:
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: 0.0.0.0/0
+
+    - ec2:
+        key_name: ubuntu_key
+        instance_type: t2.micro
+        instance_tags:
+          Name: ubuntu-cuda-host
+        image: "{{ ami_find.ami }}"
+        wait: yes
+        group: cuda-host
+        exact_count: 1
+        count_tag:
+          Name: ubuntu-cuda-host
+        vpc_subnet_id: "{{ vpc_subnet_id }}"
+        assign_public_ip: yes
+      register: ec2
+
+    - add_host:
+        hostname: "{{ ec2['tagged_instances'][0]['public_ip'] }}"
+        groups: ubuntu-cuda-host
+
+
+- hosts: ubuntu-cuda-host
   sudo: yes
   gather_facts: false
+  remote_user: ubuntu
   tasks:
     - apt:
         name: "{{ item }}"
@@ -16,9 +94,9 @@
     - get_url:
         url: http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_7.0-28_amd64.deb
         dest: ~/cuda-installer.deb
+      register: get_url_result
 
-    - apt:
-        deb: ~/cuda-installer.deb
+    - command: dpkg -i ~/cuda-installer.deb
 
     - apt:
         name: cuda
@@ -28,6 +106,16 @@
     - file:
         path: ~/cuda-installer.deb
         state: absent
+
+    - lineinfile:
+        dest: /etc/environment
+        regexp: '^(PATH=\")(.*)$'
+        line: '\1/usr/local/cuda-7.0/bin:\2'
+        backrefs: yes
+
+    - lineinfile:
+        dest: /etc/environment
+        line: 'LD_LIBRARY_PATH="/usr/local/cuda-7.0/lib64"'
 
     - copy:
         src: blacklist-nouveau.conf
