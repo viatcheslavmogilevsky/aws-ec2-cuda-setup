@@ -127,6 +127,16 @@
         dest: /etc/modprobe.d/nouveau-kms.conf
         line: options nouveau modeset=0
 
+    - command: make
+      args:
+        chdir: /usr/local/cuda-7.0/samples/1_Utilities/deviceQuery
+
+    - lineinfile:
+        state: present
+        line: /usr/local/cuda-7.0/samples/1_Utilities/deviceQuery/deviceQuery
+        dest: /etc/rc.local
+        insertbefore: 'exit 0'
+
     - command: update-initramfs -u
 
 
